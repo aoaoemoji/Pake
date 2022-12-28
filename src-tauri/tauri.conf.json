@@ -8,9 +8,9 @@
       {
         "url": "https://mi.fiime.cn/",
         "transparent": true,
-        "fullscreen": false,
-        "width": 1200,
-        "height": 780,
+        "fullscreen": true,
+        "width": 1280,
+        "height": 800,
         "resizable": true
       }
     ],
