@@ -1,6 +1,6 @@
 {
   "package": {
-    "productName": "FiimeROM",
+    "productName": "fiimerom",
     "version": "2.0.0"
   },
   "tauri": {
