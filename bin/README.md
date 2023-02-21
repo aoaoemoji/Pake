@@ -1,15 +1,39 @@
 ## 安装
 
+请确保 Node 版本>=16 如 16.8，不要使用 sudo 进行安装，假如 npm 报没有权限可以参考 [How to fix npm throwing error without sudo](https://stackoverflow.com/questions/16151018/how-to-fix-npm-throwing-error-without-sudo)。
+
 ```bash
 npm install -g pake-cli
 ```
 
-如果安装失败提示没有权限，请参考该贴解决：[链接](https://gist.github.com/Giancarlos/d087f8a9e6516716da98ad0c0f5a8f58)。
+## Windows/Linux 注意点
 
-此外，请确保你使用的是正确的 Node.js 版本（`^14.13 || >=16.0.0`）。如果你在使用 [nvm](https://github.com/nvm-sh/nvm) 进行 Node.js 版本管理，可以尝试在项目的目录下运行 `nvm use`，就会拿到正确的版本；其他一众 Node.js 版本工具，比如 [fnm](https://github.com/Schniz/fnm)、[tj/n](https://github.com/tj/n) 应该也有类似的功能。
+- **十分重要** 查看 Tauri 提供的[依赖指南](https://tauri.app/v1/guides/getting-started/prerequisites)
+- 对于 windows（至少安装了`Win10 SDK(10.0.19041.0)` 与`Visual Studio build tool 2022（>=17.2）`），还需要额外安装：
 
-**尽量不要使用 `sudo` 权限**。 如果实在要用 sudo，请手动安装 rust 到系统环境。Mac 可以用 brew 命令安装，Linux 如 Ubuntu 可以用 apt 命令安装。
+  1. Microsoft Visual C++ 2015-2022 Redistributable (x64)
+  2. Microsoft Visual C++ 2015-2022 Redistributable (x86)
+  3. Microsoft Visual C++ 2012 Redistributable (x86)（可选）
+  4. Microsoft Visual C++ 2013 Redistributable (x86)（可选）
+  5. Microsoft Visual C++ 2008 Redistributable (x86)（可选）
 
+- 此外 Ubuntu 在开始之前可以运行如下命令，安装前期所需依赖。
+
+  ```bash
+  sudo apt install libdbus-1-dev \
+      libsoup2.4-dev \
+      libjavascriptcoregtk-4.0-dev \
+      libwebkit2gtk-4.0-dev \
+      build-essential \
+      curl \
+      wget \
+      libssl-dev \
+      libgtk-3-dev \
+      libayatana-appindicator3-dev \
+      librsvg2-dev \
+      gnome-video-effects \
+      gnome-video-effects-extra
+  ```
 
 ## 用法
 
@@ -19,7 +43,8 @@ pake url [options]
 
 打包完成后的应用程序默认为当前工作目录，首次打包由于需配置好环境，需要一些时间，请耐心等待即可。
 
-Note: 打包需要用 `Rust` 环境，如果没有 `Rust`，会提示确认安装。如遇安装失败或超时，可[自行安装](https://www.rust-lang.org/tools/install)。
+> **Note**:
+> 打包需要用 `Rust` 环境，如果没有 `Rust`，会提示确认安装。如遇安装失败或超时，可[自行安装](https://www.rust-lang.org/tools/install)。
 
 ### url
 
@@ -35,6 +60,8 @@ url 为你需要打包的网页链接 🔗，必须提供。
 
 ```shell
 --name <value>
+# 或者
+-n <value>
 ```
 
 #### [icon]
@@ -47,6 +74,8 @@ url 为你需要打包的网页链接 🔗，必须提供。
 
 ```shell
 --icon <path>
+# 或者
+-i <path>
 ```
 
 #### [height]
@@ -55,6 +84,8 @@ url 为你需要打包的网页链接 🔗，必须提供。
 
 ```shell
 --height <number>
+# 或者
+-h <number>
 ```
 
 #### [width]
@@ -63,28 +94,63 @@ url 为你需要打包的网页链接 🔗，必须提供。
 
 ```shell
 --width <number>
+# 或者
+-w <number>
 ```
 
 #### [transparent]
 
-是否开启沉浸式头部，默认为 `false` 不开启。
+是否开启沉浸式头部，默认为 `false` 不开启。使用下面的命令来开启该功能。
 
 ```shell
 --transparent
-```
-
-#### [resize]
-
-是否可以拖动大小，默认为 `true` 可拖动。
-
-```shell
---no-resizable
+# 或者
+-t
 ```
 
 #### [fullscreen]
 
-打开应用后是否开启全屏，默认为 `false`。
+打开应用后是否开启全屏，默认为 `false`，使用下面的命令开启该功能。
 
 ```shell
---fullscreen <value>
+--fullscreen
+# 或者
+-f
+```
+
+#### [resize]
+
+是否可以拖动大小，默认为 `true` 可拖动。使用下面的命令来关闭该功能。
+
+```shell
+--no-resizable
+# 或者
+-r
+```
+
+#### [multi-arch]
+
+打包结果同时支持英特尔和 m1 芯片，仅适用于 MacOS，默认为 `false`。
+
+##### 准备工作
+
+- 注意：开启该选项后，需要用 rust 官网的 rustup 安装 rust，不支持 brew 安装。
+- 对于 intel 芯片用户，需要安装 arm64 跨平台包，使安装包支持 m1 芯片，使用下面命令安装。
+
+```shell
+rustup target add aarch64-apple-darwin
+```
+
+- 对于 M1 芯片用户，需要安装 x86 跨平台包，使安装包支持 interl 芯片，使用下面的命令安装。
+
+```shell
+rustup target add x86_64-apple-darwin
+```
+
+##### 使用方法
+
+```shell
+--multi-arch
+# 或者
+-m
 ```

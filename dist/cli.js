@@ -48,6 +48,7 @@ const DEFAULT_PAKE_OPTIONS = {
     resizable: true,
     transparent: false,
     debug: false,
+    multiArch: false,
 };
 
 const tlds = [
@@ -1642,11 +1643,11 @@ function mergeTauriConfig(url, options, tauriConf) {
                 process.exit();
             }
         }
-        if (process.platform === "win32" || process.platform === "darwin") {
+        if (process.platform === "win32") {
             const reg = new RegExp(/([0-9]*[a-zA-Z]+[0-9]*)+/);
             if (!reg.test(name) || reg.exec(name)[0].length != name.length) {
                 logger.error("package name is illegal， it must be letters, numbers, and it must contain the letters");
-                logger.error("E.g 123pan,123Pan Pan123,weread, WeRead, WERead");
+                logger.error("E.g 123pan,123Pan,Pan123,weread,WeRead,WERead");
                 process.exit();
             }
         }
@@ -1752,38 +1753,6 @@ function getDefaultIcon() {
         return path.join(npmDirectory, iconPath);
     });
 }
-// export async function getIconFromPageUrl(url: string) {
-//   const icon = await pageIcon(url);
-//   console.log(icon);
-//   if (icon.ext === '.ico') {
-//     const a = await ICO.parse(icon.data);
-//     icon.data = Buffer.from(a[0].buffer);
-//   }
-//   const iconDir = (await dir()).path;
-//   const iconPath = path.join(iconDir, `/icon.icns`);
-//   const out = png2icons.createICNS(icon.data, png2icons.BILINEAR, 0);
-//   await fs.writeFile(iconPath, out);
-//   return iconPath;
-// }
-// export async function getIconFromMacosIcons(name: string) {
-//   const data = {
-//     query: name,
-//     filters: 'approved:true',
-//     hitsPerPage: 10,
-//     page: 1,
-//   };
-//   const res = await axios.post('https://p1txh7zfb3-2.algolianet.com/1/indexes/macOSicons/query?x-algolia-agent=Algolia%20for%20JavaScript%20(4.13.1)%3B%20Browser', data, {
-//     headers: {
-//       'x-algolia-api-key': '0ba04276e457028f3e11e38696eab32c',
-//       'x-algolia-application-id': 'P1TXH7ZFB3',
-//     },
-//   });
-//   if (!res.data.hits.length) {
-//     return '';
-//   } else {
-//     return downloadIcon(res.data.hits[0].icnsUrl);
-//   }
-// }
 function downloadIcon(iconUrl) {
     return __awaiter(this, void 0, void 0, function* () {
         let iconResponse;
@@ -1827,7 +1796,7 @@ function handleOptions(options, url) {
 
 function shellExec(command) {
     return new Promise((resolve, reject) => {
-        shelljs.exec(command, { async: true, silent: false }, (code) => {
+        shelljs.exec(command, { async: true, silent: false, cwd: npmDirectory }, (code) => {
             if (code === 0) {
                 resolve(0);
             }
@@ -2038,7 +2007,7 @@ class MacBuilder {
                 yield installRust();
             }
             else {
-                log.error('Error: Pake need Rust to package your webapp!!!');
+                log.error('Error: Pake need Rust to package your webapp!');
                 process.exit(2);
             }
         });
@@ -2048,16 +2017,23 @@ class MacBuilder {
             log.debug('PakeAppOptions', options);
             const { name } = options;
             yield mergeTauriConfig(url, options, tauriConf);
-            yield shellExec(`cd ${npmDirectory} && npm install && npm run build`);
-            let arch = "x64";
-            if (process.arch === "arm64") {
-                arch = "aarch64";
+            let dmgName;
+            if (options.multiArch) {
+                yield shellExec(`cd ${npmDirectory} && npm install && npm run build:mac`);
+                dmgName = `${name}_${tauriConf.package.version}_universal.dmg`;
             }
             else {
-                arch = process.arch;
+                yield shellExec(`cd ${npmDirectory} && npm install && npm run build`);
+                let arch = "x64";
+                if (process.arch === "arm64") {
+                    arch = "aarch64";
+                }
+                else {
+                    arch = process.arch;
+                }
+                dmgName = `${name}_${tauriConf.package.version}_${arch}.dmg`;
             }
-            const dmgName = `${name}_${tauriConf.package.version}_${arch}.dmg`;
-            const appPath = this.getBuildedAppPath(npmDirectory, dmgName);
+            const appPath = this.getBuildAppPath(npmDirectory, dmgName, options.multiArch);
             const distPath = path.resolve(`${name}.dmg`);
             yield fs.copyFile(appPath, distPath);
             yield fs.unlink(appPath);
@@ -2065,8 +2041,15 @@ class MacBuilder {
             logger.success('You can find the app installer in', distPath);
         });
     }
-    getBuildedAppPath(npmDirectory, dmgName) {
-        return path.join(npmDirectory, 'src-tauri/target/release/bundle/dmg', dmgName);
+    getBuildAppPath(npmDirectory, dmgName, multiArch) {
+        let dmgPath;
+        if (multiArch) {
+            dmgPath = 'src-tauri/target/universal-apple-darwin/release/bundle/dmg';
+        }
+        else {
+            dmgPath = 'src-tauri/target/release/bundle/dmg';
+        }
+        return path.join(npmDirectory, dmgPath, dmgName);
     }
 }
 
@@ -2102,7 +2085,7 @@ class WinBuilder {
             const language = tauriConf.tauri.bundle.windows.wix.language[0];
             const arch = process.arch;
             const msiName = `${name}_${tauriConf.package.version}_${arch}_${language}.msi`;
-            const appPath = this.getBuildedAppPath(npmDirectory, msiName);
+            const appPath = this.getBuildAppPath(npmDirectory, msiName);
             const distPath = path.resolve(`${name}.msi`);
             yield fs.copyFile(appPath, distPath);
             yield fs.unlink(appPath);
@@ -2110,7 +2093,7 @@ class WinBuilder {
             logger.success('You can find the app installer in', distPath);
         });
     }
-    getBuildedAppPath(npmDirectory, dmgName) {
+    getBuildAppPath(npmDirectory, dmgName) {
         return path.join(npmDirectory, 'src-tauri/target/release/bundle/msi', dmgName);
     }
 }
@@ -2144,7 +2127,7 @@ class LinuxBuilder {
             const { name } = options;
             yield mergeTauriConfig(url, options, tauriConf);
             yield shellExec(`cd ${npmDirectory} && npm install && npm run build`);
-            let arch = "";
+            let arch;
             if (process.arch === "x64") {
                 arch = "amd64";
             }
@@ -2152,21 +2135,21 @@ class LinuxBuilder {
                 arch = process.arch;
             }
             const debName = `${name}_${tauriConf.package.version}_${arch}.deb`;
-            const appPath = this.getBuildedAppPath(npmDirectory, "deb", debName);
+            const appPath = this.getBuildAppPath(npmDirectory, "deb", debName);
             const distPath = path.resolve(`${name}.deb`);
             yield fs.copyFile(appPath, distPath);
             yield fs.unlink(appPath);
             const appImageName = `${name}_${tauriConf.package.version}_${arch}.AppImage`;
-            const appImagePath = this.getBuildedAppPath(npmDirectory, "appimage", appImageName);
+            const appImagePath = this.getBuildAppPath(npmDirectory, "appimage", appImageName);
             const distAppPath = path.resolve(`${name}.AppImage`);
             yield fs.copyFile(appImagePath, distAppPath);
             yield fs.unlink(appImagePath);
             logger.success('Build success!');
             logger.success('You can find the deb app installer in', distPath);
-            logger.success('You can find the Appimage app installer in', distAppPath);
+            logger.success('You can find the AppImage app installer in', distAppPath);
         });
     }
-    getBuildedAppPath(npmDirectory, packageType, packageName) {
+    getBuildAppPath(npmDirectory, packageType, packageName) {
         return path.join(npmDirectory, 'src-tauri/target/release/bundle/', packageType, packageName);
     }
 }
@@ -2187,10 +2170,10 @@ class BuilderFactory {
 }
 
 var name = "pake-cli";
-var version = "1.0.1";
-var description = "🤱🏻 很简单的用 Rust 打包网页生成很小的桌面 App 🤱🏻 A simple way to make any web page a desktop application using Rust.";
+var version = "1.2.4";
+var description = "🤱🏻 Turn any webpage into a desktop app with Rust. 🤱🏻 很简单的用 Rust 打包网页生成很小的桌面 App。";
 var engines = {
-	node: "^14.13 || >=16.0.0"
+	node: ">=16.0.0"
 };
 var bin = {
 	pake: "./cli.js"
@@ -2290,20 +2273,21 @@ function checkUpdateTips() {
     });
 }
 
-program.version(packageJson.version).description('A cli application can package a web page to desktop application.');
+program.version(packageJson.version).description('A cli application can turn any webpage into a desktop app with Rust.');
 program
     .showHelpAfterError()
     .argument('[url]', 'the web url you want to package', validateUrlInput)
-    .option('--name <string>', 'application name')
-    .option('--icon <string>', 'application icon', DEFAULT_PAKE_OPTIONS.icon)
-    .option('--height <number>', 'window height', validateNumberInput, DEFAULT_PAKE_OPTIONS.height)
-    .option('--width <number>', 'window width', validateNumberInput, DEFAULT_PAKE_OPTIONS.width)
-    .option('--no-resizable', 'whether the window can be resizable', DEFAULT_PAKE_OPTIONS.resizable)
-    .option('--fullscreen', 'makes the packaged app start in full screen', DEFAULT_PAKE_OPTIONS.fullscreen)
-    .option('--transparent', 'transparent title bar', DEFAULT_PAKE_OPTIONS.transparent)
-    .option('--debug', 'debug', DEFAULT_PAKE_OPTIONS.transparent)
+    .option('-n, --name <string>', 'application name')
+    .option('-i, --icon <string>', 'application icon', DEFAULT_PAKE_OPTIONS.icon)
+    .option('-w, --width <number>', 'window width', validateNumberInput, DEFAULT_PAKE_OPTIONS.width)
+    .option('-h, --height <number>', 'window height', validateNumberInput, DEFAULT_PAKE_OPTIONS.height)
+    .option('-f, --fullscreen', 'makes the packaged app start in full screen', DEFAULT_PAKE_OPTIONS.fullscreen)
+    .option('-t, --transparent', 'transparent title bar', DEFAULT_PAKE_OPTIONS.transparent)
+    .option('-r, --no-resizable', 'whether the window can be resizable', DEFAULT_PAKE_OPTIONS.resizable)
+    .option('-d, --debug', 'debug', DEFAULT_PAKE_OPTIONS.debug)
+    .option('-m, --multi-arch', "Supports both Intel and m1 chips, only for Mac.", DEFAULT_PAKE_OPTIONS.multiArch)
     .action((url, options) => __awaiter(void 0, void 0, void 0, function* () {
-    checkUpdateTips();
+    yield checkUpdateTips();
     if (!url) {
         // 直接 pake 不需要出现url提示
         program.help();
@@ -2315,6 +2299,6 @@ program
     const builder = BuilderFactory.create();
     yield builder.prepare();
     const appOptions = yield handleOptions(options, url);
-    builder.build(url, appOptions);
+    yield builder.build(url, appOptions);
 }));
 program.parse();
