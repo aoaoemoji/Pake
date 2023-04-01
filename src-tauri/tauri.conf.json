@@ -1,13 +1,13 @@
 {
 	"package": {
-	  "productName": "WeRead",
+	  "productName": "FiimeAI",
 	  "version": "1.0.0"
 	},
 	"tauri": {
 	  "windows": [
 		{
 		  "url": "https://weread.qq.com/",
-		  "transparent": true,
+		  "transparent": false,
 		  "fullscreen": false,
 		  "width": 1200,
 		  "height": 780,
