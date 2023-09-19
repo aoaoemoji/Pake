@@ -1,8 +1,8 @@
 {
   "apps": [
     {
-      "name": "OdogAI",
-      "title": "OdogAI",
+      "name": "ChatGPT",
+      "title": "ChatGPT",
       "name_zh": "OdogAI",
       "url": "https://gpt.oooo.dog/"
     }
